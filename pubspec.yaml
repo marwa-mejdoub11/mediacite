@@ -1,0 +1,39 @@
+name: mediaapp
+description: "Application Médiathèque Mediacité"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Firebase (versions compatibles ensemble)
+  firebase_core: ^4.6.0
+  firebase_auth: ^6.3.0
+  cloud_firestore: ^6.2.0
+  firebase_messaging: ^16.1.3
+
+  # État
+  provider: ^6.1.2
+
+  # Cache local
+ 
+
+  # Utilitaires
+  go_router: ^17.0.0
+  mobile_scanner: ^7.2.0
+  cached_network_image: ^3.3.0
+
+  # Icons iOS
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
