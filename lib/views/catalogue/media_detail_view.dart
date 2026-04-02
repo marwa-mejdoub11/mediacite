@@ -1,0 +1,399 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../controllers/auth_controller.dart';
+import '../../controllers/emprunt_controller.dart';
+import '../../models/media_model.dart';
+
+class MediaDetailView extends StatefulWidget {
+  final MediaModel media;
+
+  const MediaDetailView({super.key, required this.media});
+
+  @override
+  State<MediaDetailView> createState() => _MediaDetailViewState();
+}
+
+class _MediaDetailViewState extends State<MediaDetailView> {
+  bool _isLoading = false;
+
+  Future<void> _emprunter() async {
+    final auth = context.read<AuthController>();
+    final empruntCtrl = context.read<EmpruntController>();
+
+    if (auth.user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Connectez-vous pour emprunter'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final success = await empruntCtrl.emprunterMedia(
+      userId: auth.user!.uid,
+      media: widget.media,
+    );
+
+    setState(() => _isLoading = false);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            success
+                ? '✅ "${widget.media.titre}" emprunté avec succès !'
+                : '❌ Erreur lors de l\'emprunt',
+          ),
+          backgroundColor: success ? Colors.green : Colors.red,
+        ),
+      );
+      if (success) Navigator.pop(context);
+    }
+  }
+
+  Future<void> _reserver() async {
+    final auth = context.read<AuthController>();
+    final empruntCtrl = context.read<EmpruntController>();
+
+    if (auth.user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Connectez-vous pour réserver'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final success = await empruntCtrl.reserverMedia(
+      userId: auth.user!.uid,
+      media: widget.media,
+    );
+
+    setState(() => _isLoading = false);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            success
+                ? '✅ Réservation confirmée ! Vous serez notifié.'
+                : '❌ Erreur lors de la réservation',
+          ),
+          backgroundColor: success ? Colors.green : Colors.red,
+        ),
+      );
+      if (success) Navigator.pop(context);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final media = widget.media;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF1A1A2E),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF16213E),
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text(
+          media.titre,
+          style: const TextStyle(color: Colors.white),
+        ),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Couverture / Header
+            Container(
+              width: double.infinity,
+              height: 200,
+              color: const Color(0xFF16213E),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    media.categorie == 'film'
+                        ? Icons.movie
+                        : media.categorie == 'magazine'
+                            ? Icons.newspaper
+                            : Icons.book,
+                    size: 80,
+                    color: const Color(0xFFD4AF37),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: media.disponible
+                          ? Colors.green.withOpacity(0.2)
+                          : Colors.red.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      media.disponible ? '✅ Disponible' : '🔒 Non disponible',
+                      style: TextStyle(
+                        color: media.disponible ? Colors.green : Colors.red,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Titre
+                  Text(
+                    media.titre,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    media.auteur,
+                    style: const TextStyle(
+                      color: Color(0xFFD4AF37),
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Infos
+                  Row(
+                    children: [
+                      _InfoChip(
+                        icon: Icons.category,
+                        label: media.categorie[0].toUpperCase() +
+                            media.categorie.substring(1),
+                      ),
+                      const SizedBox(width: 8),
+                      _InfoChip(
+                        icon: Icons.star,
+                        label: '${media.note}/5',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Description
+                  const Text(
+                    'Description',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    media.description.isNotEmpty
+                        ? media.description
+                        : 'Aucune description disponible.',
+                    style: const TextStyle(
+                      color: Colors.white60,
+                      fontSize: 14,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Infos emprunt
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF16213E),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white10),
+                    ),
+                    child: Column(
+                      children: [
+                        _InfoEmprunt(
+                          icon: Icons.calendar_today,
+                          label: 'Durée d\'emprunt',
+                          valeur: '14 jours',
+                        ),
+                        const Divider(color: Colors.white10),
+                        _InfoEmprunt(
+                          icon: Icons.refresh,
+                          label: 'Prolongation',
+                          valeur: '7 jours supplémentaires',
+                        ),
+                        const Divider(color: Colors.white10),
+                        _InfoEmprunt(
+                          icon: Icons.library_books,
+                          label: 'Limite emprunts',
+                          valeur: '3 médias simultanés',
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Boutons action
+                  if (media.disponible) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        onPressed: _isLoading ? null : _emprunter,
+                        icon: const Icon(Icons.book, color: Colors.white),
+                        label: _isLoading
+                            ? const CircularProgressIndicator(
+                                color: Colors.white)
+                            : const Text(
+                                'Emprunter maintenant',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF800020),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        onPressed: _isLoading ? null : _reserver,
+                        icon: const Icon(Icons.bookmark_add,
+                            color: Colors.white),
+                        label: _isLoading
+                            ? const CircularProgressIndicator(
+                                color: Colors.white)
+                            : const Text(
+                                'Réserver (file d\'attente)',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFD4AF37),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+
+                  // Bouton favoris
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('❤️ Ajouté aux favoris !'),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.favorite_border,
+                          color: Colors.redAccent),
+                      label: const Text(
+                        'Ajouter aux favoris',
+                        style: TextStyle(color: Colors.redAccent),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.redAccent),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _InfoChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white10,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: const Color(0xFFD4AF37), size: 14),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoEmprunt extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String valeur;
+
+  const _InfoEmprunt({
+    required this.icon,
+    required this.label,
+    required this.valeur,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: const Color(0xFFD4AF37), size: 18),
+        const SizedBox(width: 8),
+        Text(label, style: const TextStyle(color: Colors.white60)),
+        const Spacer(),
+        Text(
+          valeur,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+}

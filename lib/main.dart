@@ -5,6 +5,7 @@ import 'firebase_options.dart';
 import 'controllers/auth_controller.dart';
 import 'controllers/media_controller.dart';
 import 'controllers/event_controller.dart';
+import 'controllers/emprunt_controller.dart';
 import 'views/auth/login_view.dart';
 
 void main() async {
@@ -25,6 +26,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthController()),
         ChangeNotifierProvider(create: (_) => MediaController()),
         ChangeNotifierProvider(create: (_) => EventController()),
+        ChangeNotifierProvider(create: (_) => EmpruntController()),
       ],
       child: MaterialApp(
         title: 'Mediacité',

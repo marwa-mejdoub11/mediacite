@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/media_controller.dart';
+import 'media_detail_view.dart';
 
 class CatalogueView extends StatefulWidget {
   const CatalogueView({super.key});
@@ -16,6 +17,12 @@ class _CatalogueViewState extends State<CatalogueView> {
   void initState() {
     super.initState();
     context.read<MediaController>().chargerMedias();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -43,7 +50,10 @@ class _CatalogueViewState extends State<CatalogueView> {
               decoration: InputDecoration(
                 hintText: 'Rechercher un média...',
                 hintStyle: const TextStyle(color: Colors.white38),
-                prefixIcon: const Icon(Icons.search, color: Color(0xFFD4AF37)),
+                prefixIcon: const Icon(
+                  Icons.search,
+                  color: Color(0xFFD4AF37),
+                ),
                 filled: true,
                 fillColor: Colors.white10,
                 border: OutlineInputBorder(
@@ -66,7 +76,9 @@ class _CatalogueViewState extends State<CatalogueView> {
                   child: Container(
                     margin: const EdgeInsets.only(right: 8),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 8),
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: selected
                           ? const Color(0xFF800020)
@@ -105,74 +117,94 @@ class _CatalogueViewState extends State<CatalogueView> {
                         ),
                       )
                     : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 16),
                         itemCount: ctrl.medias.length,
                         itemBuilder: (context, index) {
                           final media = ctrl.medias[index];
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF16213E),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.white10),
+                          return GestureDetector(
+                            // ← Cliquable pour ouvrir le détail
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    MediaDetailView(media: media),
+                              ),
                             ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  media.categorie == 'film'
-                                      ? Icons.movie
-                                      : media.categorie == 'magazine'
-                                          ? Icons.newspaper
-                                          : Icons.book,
-                                  color: const Color(0xFFD4AF37),
-                                  size: 40,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        media.titre,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      Text(
-                                        media.auteur,
-                                        style: const TextStyle(
-                                          color: Colors.white60,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF16213E),
+                                borderRadius: BorderRadius.circular(12),
+                                border:
+                                    Border.all(color: Colors.white10),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    media.categorie == 'film'
+                                        ? Icons.movie
+                                        : media.categorie == 'magazine'
+                                            ? Icons.newspaper
+                                            : Icons.book,
+                                    color: const Color(0xFFD4AF37),
+                                    size: 40,
                                   ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: media.disponible
-                                        ? Colors.green.withOpacity(0.2)
-                                        : Colors.red.withOpacity(0.2),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    media.disponible
-                                        ? 'Disponible'
-                                        : 'Emprunté',
-                                    style: TextStyle(
-                                      color: media.disponible
-                                          ? Colors.green
-                                          : Colors.red,
-                                      fontSize: 11,
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          media.titre,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        Text(
+                                          media.auteur,
+                                          style: const TextStyle(
+                                            color: Colors.white60,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ),
-                              ],
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: media.disponible
+                                          ? Colors.green.withOpacity(0.2)
+                                          : Colors.red.withOpacity(0.2),
+                                      borderRadius:
+                                          BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      media.disponible
+                                          ? 'Disponible'
+                                          : 'Emprunté',
+                                      style: TextStyle(
+                                        color: media.disponible
+                                            ? Colors.green
+                                            : Colors.red,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Icon(
+                                    Icons.chevron_right,
+                                    color: Colors.white38,
+                                  ),
+                                ],
+                              ),
                             ),
                           );
                         },
