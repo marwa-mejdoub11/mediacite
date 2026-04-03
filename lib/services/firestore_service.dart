@@ -70,4 +70,53 @@ class FirestoreService {
         .snapshots()
         .map((snap) => snap.docs.map((doc) => doc.data()).toList());
   }
+
+  // ── FAVORIS ─────────────────────────────────
+
+// Ajouter aux favoris
+Future<void> ajouterFavori(String userId, MediaModel media) async {
+  await _db
+      .collection('users')
+      .doc(userId)
+      .collection('favoris')
+      .doc(media.id)
+      .set({
+    'mediaId': media.id,
+    'titre': media.titre,
+    'auteur': media.auteur,
+    'categorie': media.categorie,
+    'dateAjout': DateTime.now().toIso8601String(),
+  });
+}
+
+// Supprimer des favoris
+Future<void> supprimerFavori(String userId, String mediaId) async {
+  await _db
+      .collection('users')
+      .doc(userId)
+      .collection('favoris')
+      .doc(mediaId)
+      .delete();
+}
+
+// Récupérer les favoris
+Stream<List<Map<String, dynamic>>> getFavoris(String userId) {
+  return _db
+      .collection('users')
+      .doc(userId)
+      .collection('favoris')
+      .snapshots()
+      .map((snap) => snap.docs.map((doc) => doc.data()).toList());
+}
+
+// Vérifier si un média est en favori
+Future<bool> estFavori(String userId, String mediaId) async {
+  final doc = await _db
+      .collection('users')
+      .doc(userId)
+      .collection('favoris')
+      .doc(mediaId)
+      .get();
+  return doc.exists;
+}
 }

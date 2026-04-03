@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/emprunt_controller.dart';
 import '../../models/media_model.dart';
+import '../../services/firestore_service.dart';
 
 class MediaDetailView extends StatefulWidget {
   final MediaModel media;
@@ -15,6 +16,68 @@ class MediaDetailView extends StatefulWidget {
 
 class _MediaDetailViewState extends State<MediaDetailView> {
   bool _isLoading = false;
+  bool _estFavori = false;
+  bool _loadingFavori = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _verifierFavori();
+  }
+
+  Future<void> _verifierFavori() async {
+    final auth = context.read<AuthController>();
+    if (auth.user == null) {
+      setState(() => _loadingFavori = false);
+      return;
+    }
+    final result = await FirestoreService()
+        .estFavori(auth.user!.uid, widget.media.id);
+    setState(() {
+      _estFavori = result;
+      _loadingFavori = false;
+    });
+  }
+
+  Future<void> _toggleFavori() async {
+    final auth = context.read<AuthController>();
+
+    if (auth.user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Connectez-vous pour ajouter aux favoris'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final service = FirestoreService();
+
+    if (_estFavori) {
+      await service.supprimerFavori(auth.user!.uid, widget.media.id);
+      setState(() => _estFavori = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('💔 Retiré des favoris'),
+            backgroundColor: Colors.grey,
+          ),
+        );
+      }
+    } else {
+      await service.ajouterFavori(auth.user!.uid, widget.media);
+      setState(() => _estFavori = true);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('❤️ Ajouté aux favoris !'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
 
   Future<void> _emprunter() async {
     final auth = context.read<AuthController>();
@@ -105,12 +168,34 @@ class _MediaDetailViewState extends State<MediaDetailView> {
           media.titre,
           style: const TextStyle(color: Colors.white),
         ),
+        actions: [
+          // Bouton favori dans AppBar
+          _loadingFavori
+              ? const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  ),
+                )
+              : IconButton(
+                  icon: Icon(
+                    _estFavori ? Icons.favorite : Icons.favorite_border,
+                    color: _estFavori ? Colors.redAccent : Colors.white60,
+                  ),
+                  onPressed: _toggleFavori,
+                ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Couverture / Header
+            // Header
             Container(
               width: double.infinity,
               height: 200,
@@ -138,7 +223,9 @@ class _MediaDetailViewState extends State<MediaDetailView> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      media.disponible ? '✅ Disponible' : '🔒 Non disponible',
+                      media.disponible
+                          ? '✅ Disponible'
+                          : '🔒 Non disponible',
                       style: TextStyle(
                         color: media.disponible ? Colors.green : Colors.red,
                         fontWeight: FontWeight.bold,
@@ -173,7 +260,7 @@ class _MediaDetailViewState extends State<MediaDetailView> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Infos
+                  // Infos chips
                   Row(
                     children: [
                       _InfoChip(
@@ -244,7 +331,7 @@ class _MediaDetailViewState extends State<MediaDetailView> {
                   ),
                   const SizedBox(height: 32),
 
-                  // Boutons action
+                  // Bouton Emprunter ou Réserver
                   if (media.disponible) ...[
                     SizedBox(
                       width: double.infinity,
@@ -277,8 +364,10 @@ class _MediaDetailViewState extends State<MediaDetailView> {
                       height: 50,
                       child: ElevatedButton.icon(
                         onPressed: _isLoading ? null : _reserver,
-                        icon: const Icon(Icons.bookmark_add,
-                            color: Colors.white),
+                        icon: const Icon(
+                          Icons.bookmark_add,
+                          color: Colors.white,
+                        ),
                         label: _isLoading
                             ? const CircularProgressIndicator(
                                 color: Colors.white)
@@ -301,24 +390,23 @@ class _MediaDetailViewState extends State<MediaDetailView> {
                   ],
                   const SizedBox(height: 12),
 
-                  // Bouton favoris
+                  // Bouton Favoris
                   SizedBox(
                     width: double.infinity,
                     height: 50,
                     child: OutlinedButton.icon(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('❤️ Ajouté aux favoris !'),
-                            backgroundColor: Colors.redAccent,
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.favorite_border,
-                          color: Colors.redAccent),
-                      label: const Text(
-                        'Ajouter aux favoris',
-                        style: TextStyle(color: Colors.redAccent),
+                      onPressed: _loadingFavori ? null : _toggleFavori,
+                      icon: Icon(
+                        _estFavori
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        color: Colors.redAccent,
+                      ),
+                      label: Text(
+                        _estFavori
+                            ? 'Retirer des favoris'
+                            : 'Ajouter aux favoris',
+                        style: const TextStyle(color: Colors.redAccent),
                       ),
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Colors.redAccent),

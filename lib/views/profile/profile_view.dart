@@ -368,81 +368,114 @@ class _HistoriqueTab extends StatelessWidget {
 }
 
 // ── Tab Favoris ───────────────────────────────
-class _FavorisTab extends StatefulWidget {
+
+class _FavorisTab extends StatelessWidget {
   final String userId;
 
   const _FavorisTab({required this.userId});
 
   @override
-  State<_FavorisTab> createState() => _FavorisTabState();
-}
-
-class _FavorisTabState extends State<_FavorisTab> {
-  // Liste locale de favoris (à connecter à Firestore)
-  final List<Map<String, dynamic>> _favoris = [];
-
-  @override
   Widget build(BuildContext context) {
-    if (_favoris.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.favorite_border,
-              color: Colors.white24,
-              size: 64,
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Aucun favori pour le moment',
-              style: TextStyle(color: Colors.white60),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Ajoutez des médias à vos favoris depuis le catalogue',
-              style: TextStyle(color: Colors.white38, fontSize: 12),
-              textAlign: TextAlign.center,
-            ),
-          ],
+    if (userId.isEmpty) {
+      return const Center(
+        child: Text(
+          'Connectez-vous pour voir vos favoris',
+          style: TextStyle(color: Colors.white60),
         ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _favoris.length,
-      itemBuilder: (context, index) {
-        final favori = _favoris[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF16213E),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white10),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.book, color: Color(0xFFD4AF37), size: 36),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  favori['titre'] ?? '',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: FirestoreService().getFavoris(userId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(color: Color(0xFFD4AF37)),
+          );
+        }
+
+        final favoris = snapshot.data ?? [];
+
+        if (favoris.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.favorite_border, color: Colors.white24, size: 64),
+                SizedBox(height: 16),
+                Text(
+                  'Aucun favori pour le moment',
+                  style: TextStyle(color: Colors.white60),
                 ),
+                SizedBox(height: 8),
+                Text(
+                  'Ajoutez des médias depuis le catalogue',
+                  style: TextStyle(color: Colors.white38, fontSize: 12),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: favoris.length,
+          itemBuilder: (context, index) {
+            final favori = favoris[index];
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF16213E),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white10),
               ),
-              IconButton(
-                icon: const Icon(Icons.favorite, color: Colors.redAccent),
-                onPressed: () {
-                  setState(() => _favoris.removeAt(index));
-                },
+              child: Row(
+                children: [
+                  Icon(
+                    favori['categorie'] == 'film'
+                        ? Icons.movie
+                        : favori['categorie'] == 'magazine'
+                            ? Icons.newspaper
+                            : Icons.book,
+                    color: const Color(0xFFD4AF37),
+                    size: 36,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          favori['titre'] ?? '',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          favori['auteur'] ?? '',
+                          style: const TextStyle(
+                            color: Colors.white60,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.favorite, color: Colors.redAccent),
+                    onPressed: () async {
+                      await FirestoreService().supprimerFavori(
+                        userId,
+                        favori['mediaId'],
+                      );
+                    },
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
