@@ -7,7 +7,7 @@ import '../communication/communication_view.dart';
 import '../catalogue/catalogue_view.dart';
 import '../events/events_view.dart';
 import '../profile/profile_view.dart';
-
+import '../../utils/seed_data.dart';
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
 
@@ -24,8 +24,6 @@ class _HomeViewState extends State<HomeView> {
     const EventsView(),
     const CommunicationView(),
     const ProfileView(),
-   
-    
   ];
 
   @override
@@ -54,31 +52,41 @@ class _HomeViewState extends State<HomeView> {
             label: 'Événements',
           ),
           BottomNavigationBarItem(
-             icon: Icon(Icons.message),
-             label: 'Messages',
+            icon: Icon(Icons.message),
+            label: 'Messages',
           ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.person),
+            icon: Icon(Icons.person),
             label: 'Profil',
- 
-),  
+          ),
         ],
       ),
     );
   }
 }
 
-class _AccueilPage extends StatelessWidget {
+// ── Accueil Page ──────────────────────────────
+class _AccueilPage extends StatefulWidget {
   const _AccueilPage();
+
+  @override
+  State<_AccueilPage> createState() => _AccueilPageState();
+}
+
+class _AccueilPageState extends State<_AccueilPage> {
+  @override
+  void initState() {
+    super.initState();
+    // ✅ Appel correct — pas dans build()
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<MediaController>().chargerMedias();
+      context.read<EventController>().chargerEvenements();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
-    final mediaCtrl = context.read<MediaController>();
-    final eventCtrl = context.read<EventController>();
-
-    mediaCtrl.chargerMedias();
-    eventCtrl.chargerEvenements();
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -117,10 +125,48 @@ class _AccueilPage extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-
-
-
+            const SizedBox(height: 20),
+// ← Ajoute après le header Row et avant les stats
+const SizedBox(height: 12),
+SizedBox(
+  width: double.infinity,
+  child: ElevatedButton.icon(
+    onPressed: () async {
+      try {
+        await SeedData.initialiserDonnees();
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Données ajoutées !'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('❌ Erreur: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    },
+    icon: const Icon(Icons.upload, color: Colors.white),
+    label: const Text(
+      'Initialiser les données',
+      style: TextStyle(color: Colors.white),
+    ),
+    style: ElevatedButton.styleFrom(
+      backgroundColor: Colors.teal,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+    ),
+  ),
+),
+const SizedBox(height: 16),
             // Statistiques rapides
             Row(
               children: [
@@ -177,7 +223,7 @@ class _AccueilPage extends StatelessWidget {
                   );
                 }
                 return SizedBox(
-                  height: 180,
+                  height: 190,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     itemCount: ctrl.medias.take(5).length,
@@ -188,6 +234,7 @@ class _AccueilPage extends StatelessWidget {
                         auteur: media.auteur,
                         categorie: media.categorie,
                         disponible: media.disponible,
+                        couverture: media.couverture,
                       );
                     },
                   ),
@@ -246,6 +293,7 @@ class _AccueilPage extends StatelessWidget {
   }
 }
 
+// ── Stat Card ─────────────────────────────────
 class _StatCard extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -295,17 +343,20 @@ class _StatCard extends StatelessWidget {
   }
 }
 
+// ── Media Card avec image ─────────────────────
 class _MediaCard extends StatelessWidget {
   final String titre;
   final String auteur;
   final String categorie;
   final bool disponible;
+  final String couverture;
 
   const _MediaCard({
     required this.titre,
     required this.auteur,
     required this.categorie,
     required this.disponible,
+    required this.couverture,
   });
 
   @override
@@ -319,43 +370,80 @@ class _MediaCard extends StatelessWidget {
         border: Border.all(color: Colors.white10),
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          Icon(
-            categorie == 'film'
-                ? Icons.movie
-                : categorie == 'magazine'
-                    ? Icons.newspaper
-                    : Icons.book,
-            size: 48,
-            color: const Color(0xFFD4AF37),
+          // Image ou icône
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(12),
+            ),
+            child: couverture.isNotEmpty
+                ? Image.network(
+                    couverture,
+                    width: 130,
+                    height: 100,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        SizedBox(
+                      height: 100,
+                      child: Icon(
+                        categorie == 'film'
+                            ? Icons.movie
+                            : categorie == 'magazine'
+                                ? Icons.newspaper
+                                : Icons.book,
+                        size: 48,
+                        color: const Color(0xFFD4AF37),
+                      ),
+                    ),
+                  )
+                : SizedBox(
+                    height: 100,
+                    child: Icon(
+                      categorie == 'film'
+                          ? Icons.movie
+                          : categorie == 'magazine'
+                              ? Icons.newspaper
+                              : Icons.book,
+                      size: 48,
+                      color: const Color(0xFFD4AF37),
+                    ),
+                  ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 6),
             child: Text(
               titre,
               maxLines: 2,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            auteur,
-            maxLines: 1,
-            style: const TextStyle(
-              color: Colors.white60,
-              fontSize: 10,
+          const SizedBox(height: 2),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Text(
+              auteur,
+              maxLines: 1,
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white60,
+                fontSize: 9,
+              ),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 8,
+              vertical: 2,
+            ),
             decoration: BoxDecoration(
               color: disponible
                   ? Colors.green.withOpacity(0.2)
@@ -376,6 +464,7 @@ class _MediaCard extends StatelessWidget {
   }
 }
 
+// ── Event Card ────────────────────────────────
 class _EventCard extends StatelessWidget {
   final String titre;
   final DateTime date;
