@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/media_controller.dart';
 import '../../controllers/event_controller.dart';
-
+import '../communication/communication_view.dart';
 import '../catalogue/catalogue_view.dart';
 import '../events/events_view.dart';
 import '../profile/profile_view.dart';
@@ -22,7 +22,10 @@ class _HomeViewState extends State<HomeView> {
     const _AccueilPage(),
     const CatalogueView(),
     const EventsView(),
+    const CommunicationView(),
     const ProfileView(),
+   
+    
   ];
 
   @override
@@ -51,9 +54,14 @@ class _HomeViewState extends State<HomeView> {
             label: 'Événements',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profil',
+             icon: Icon(Icons.message),
+             label: 'Messages',
           ),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.person),
+            label: 'Profil',
+ 
+),  
         ],
       ),
     );
