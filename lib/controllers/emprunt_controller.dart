@@ -37,40 +37,48 @@ class EmpruntController extends ChangeNotifier {
     });
   }
 
-  // Emprunter un média
-  Future<bool> emprunterMedia({
-    required String userId,
-    required MediaModel media,
-  }) async {
-    try {
-      final dateEmprunt = DateTime.now();
-      final dateRetour = dateEmprunt.add(const Duration(days: 14));
+Future<bool> emprunterMedia({
+  required String userId,
+  required MediaModel media,
+}) async {
+  try {
+    // ← Vérifier la limite d'emprunts (max 3)
+    final empruntsActifs = await _db
+        .collection('emprunts')
+        .where('userId', isEqualTo: userId)
+        .where('statut', isEqualTo: 'en_cours')
+        .get();
 
-      final emprunt = EmpruntModel(
-        id: '',
-        userId: userId,
-        mediaId: media.id,
-        titrMedia: media.titre,
-        dateEmprunt: _formatDate(dateEmprunt),
-        dateRetour: _formatDate(dateRetour),
-        statut: 'en_cours',
-      );
-
-      // Ajouter l'emprunt
-      await _db.collection('emprunts').add(emprunt.toMap());
-
-      // Marquer le média comme non disponible
-      await _db.collection('medias').doc(media.id).update({
-        'disponible': false,
-      });
-
-      print('✅ Emprunt créé pour ${media.titre}');
-      return true;
-    } catch (e) {
-      print('❌ Erreur emprunt: $e');
+    if (empruntsActifs.docs.length >= 3) {
+      print('❌ Limite de 3 emprunts atteinte !');
       return false;
     }
+
+    final dateEmprunt = DateTime.now();
+    final dateRetour = dateEmprunt.add(const Duration(days: 14));
+
+    final emprunt = EmpruntModel(
+      id: '',
+      userId: userId,
+      mediaId: media.id,
+      titrMedia: media.titre,
+      dateEmprunt: _formatDate(dateEmprunt),
+      dateRetour: _formatDate(dateRetour),
+      statut: 'en_cours',
+    );
+
+    await _db.collection('emprunts').add(emprunt.toMap());
+    await _db.collection('medias').doc(media.id).update({
+      'disponible': false,
+    });
+
+    print('✅ Emprunt créé pour ${media.titre}');
+    return true;
+  } catch (e) {
+    print('❌ Erreur emprunt: $e');
+    return false;
   }
+}
 
   // Réserver un média (file d'attente)
   Future<bool> reserverMedia({

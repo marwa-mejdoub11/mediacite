@@ -117,53 +117,60 @@ class _CatalogueViewState extends State<CatalogueView> {
                         ),
                       )
                     : ListView.builder(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 16),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
                         itemCount: ctrl.medias.length,
                         itemBuilder: (context, index) {
                           final media = ctrl.medias[index];
                           return GestureDetector(
-                            // ← Cliquable pour ouvrir le détail
                             onTap: () => Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) =>
-                                    MediaDetailView(media: media),
+                                builder: (_) => MediaDetailView(media: media),
                               ),
                             ),
                             child: Container(
                               margin: const EdgeInsets.only(bottom: 12),
-                              padding: const EdgeInsets.all(16),
+                              padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF16213E),
                                 borderRadius: BorderRadius.circular(12),
-                                border:
-                                    Border.all(color: Colors.white10),
+                                border: Border.all(
+                                  color: media.disponible
+                                      ? Colors.white10
+                                      : Colors.orange.withOpacity(0.3),
+                                ),
                               ),
                               child: Row(
                                 children: [
-                                  Icon(
-                                    media.categorie == 'film'
-                                        ? Icons.movie
-                                        : media.categorie == 'magazine'
-                                            ? Icons.newspaper
-                                            : Icons.book,
-                                    color: const Color(0xFFD4AF37),
-                                    size: 40,
+                                  // Image ou icône
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: media.couverture.isNotEmpty
+                                        ? Image.network(
+                                            media.couverture,
+                                            width: 55,
+                                            height: 75,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) => _iconeMedia(media.categorie),
+                                          )
+                                        : _iconeMedia(media.categorie),
                                   ),
                                   const SizedBox(width: 12),
+
+                                  // Infos
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           media.titre,
                                           style: const TextStyle(
                                             color: Colors.white,
                                             fontWeight: FontWeight.bold,
+                                            fontSize: 14,
                                           ),
                                         ),
+                                        const SizedBox(height: 2),
                                         Text(
                                           media.auteur,
                                           style: const TextStyle(
@@ -171,37 +178,106 @@ class _CatalogueViewState extends State<CatalogueView> {
                                             fontSize: 12,
                                           ),
                                         ),
+                                        const SizedBox(height: 6),
+                                        Row(
+                                          children: [
+                                            // Badge catégorie
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white10,
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: Text(
+                                                media.categorie[0].toUpperCase() +
+                                                    media.categorie.substring(1),
+                                                style: const TextStyle(
+                                                  color: Colors.white60,
+                                                  fontSize: 10,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            // Note
+                                            const Icon(
+                                              Icons.star,
+                                              color: Color(0xFFD4AF37),
+                                              size: 12,
+                                            ),
+                                            Text(
+                                              ' ${media.note}',
+                                              style: const TextStyle(
+                                                color: Color(0xFFD4AF37),
+                                                fontSize: 11,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 6),
+
+                                        // Statut disponibilité
+                                        if (media.disponible)
+                                          Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.check_circle,
+                                                color: Colors.green,
+                                                size: 14,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              const Text(
+                                                'Disponible — Emprunter',
+                                                style: TextStyle(
+                                                  color: Colors.green,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          )
+                                        else
+                                          Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.access_time,
+                                                color: Colors.orange,
+                                                size: 14,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              const Text(
+                                                'Non disponible — Réserver',
+                                                style: TextStyle(
+                                                  color: Colors.orange,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                       ],
                                     ),
                                   ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: media.disponible
-                                          ? Colors.green.withOpacity(0.2)
-                                          : Colors.red.withOpacity(0.2),
-                                      borderRadius:
-                                          BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      media.disponible
-                                          ? 'Disponible'
-                                          : 'Emprunté',
-                                      style: TextStyle(
+
+                                  // Bouton action rapide
+                                  Column(
+                                    children: [
+                                      Icon(
+                                        media.disponible
+                                            ? Icons.book
+                                            : Icons.bookmark_add,
                                         color: media.disponible
-                                            ? Colors.green
-                                            : Colors.red,
-                                        fontSize: 11,
+                                            ? const Color(0xFF800020)
+                                            : const Color(0xFFD4AF37),
+                                        size: 28,
                                       ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Icon(
-                                    Icons.chevron_right,
-                                    color: Colors.white38,
+                                      const SizedBox(height: 4),
+                                      const Icon(
+                                        Icons.chevron_right,
+                                        color: Colors.white38,
+                                        size: 16,
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
@@ -211,6 +287,26 @@ class _CatalogueViewState extends State<CatalogueView> {
                       ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _iconeMedia(String categorie) {
+    return Container(
+      width: 55,
+      height: 75,
+      decoration: BoxDecoration(
+        color: Colors.white10,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(
+        categorie == 'film'
+            ? Icons.movie
+            : categorie == 'magazine'
+                ? Icons.newspaper
+                : Icons.book,
+        color: const Color(0xFFD4AF37),
+        size: 30,
       ),
     );
   }
