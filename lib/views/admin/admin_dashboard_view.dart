@@ -685,55 +685,95 @@ class _GestionMediasState extends State<_GestionMedias> {
                             ),
                           ],
                         ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit,
-                                  color: Color(0xFFD4AF37), size: 20),
-                              onPressed: () =>
-                                  _afficherFormulaireAjout(media: media),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete,
-                                  color: Colors.redAccent, size: 20),
-                              onPressed: () async {
-                                final confirm = await showDialog<bool>(
-                                  context: context,
-                                  builder: (ctx) => AlertDialog(
-                                    backgroundColor: const Color(0xFF16213E),
-                                    title: const Text('Confirmer',
-                                        style: TextStyle(color: Colors.white)),
-                                    content: Text(
-                                      'Supprimer "${media.titre}" ?',
-                                      style: const TextStyle(
-                                          color: Colors.white60),
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(ctx, false),
-                                        child: const Text('Annuler'),
-                                      ),
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(ctx, true),
-                                        child: const Text('Supprimer',
-                                            style: TextStyle(
-                                                color: Colors.redAccent)),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                                if (confirm == true && context.mounted) {
-                                  await context
-                                      .read<MediaController>()
-                                      .supprimerMedia(media.id);
-                                }
-                              },
-                            ),
-                          ],
-                        ),
+               trailing: Row(
+  mainAxisSize: MainAxisSize.min,
+  children: [
+    // ✅ Boutons quantité + et -
+    Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Bouton +
+        GestureDetector(
+          onTap: () async {
+            await FirebaseFirestore.instance
+                .collection('medias')
+                .doc(media.id)
+                .update({
+              'quantite': media.quantite + 1,
+              'quantiteDisponible': media.quantiteDisponible + 1,
+              'disponible': true,
+            });
+          },
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Icon(
+              Icons.add,
+              color: Colors.green,
+              size: 16,
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        // Quantité
+        Text(
+          '${media.quantiteDisponible}/${media.quantite}',
+          style: const TextStyle(
+            color: Colors.white60,
+            fontSize: 10,
+          ),
+        ),
+        const SizedBox(height: 4),
+        
+          
+        
+      ],
+    ),
+    const SizedBox(width: 8),
+    // Bouton modifier
+    IconButton(
+      icon: const Icon(Icons.edit,
+          color: Color(0xFFD4AF37), size: 20),
+      onPressed: () => _afficherFormulaireAjout(media: media),
+    ),
+    // Bouton supprimer
+    IconButton(
+      icon: const Icon(Icons.delete,
+          color: Colors.redAccent, size: 20),
+      onPressed: () async {
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: const Color(0xFF16213E),
+            title: const Text('Confirmer',
+                style: TextStyle(color: Colors.white)),
+            content: Text(
+              'Supprimer "${media.titre}" ?',
+              style: const TextStyle(color: Colors.white60),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Annuler'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Supprimer',
+                    style: TextStyle(color: Colors.redAccent)),
+              ),
+            ],
+          ),
+        );
+        if (confirm == true && context.mounted) {
+          await context.read<MediaController>().supprimerMedia(media.id);
+        }
+      },
+    ),
+  ],
+),
                       ),
                     );
                   },
