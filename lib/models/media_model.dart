@@ -7,6 +7,8 @@ class MediaModel {
   final String couverture;
   final bool disponible;
   final double note;
+   final int quantite;           // ← Total exemplaires
+  final int quantiteDisponible; // ← Disponibles actuellement
 
   MediaModel({
     required this.id,
@@ -17,6 +19,8 @@ class MediaModel {
     required this.couverture,
     required this.disponible,
     required this.note,
+       this.quantite = 1,
+    this.quantiteDisponible = 1,
   });
 
   factory MediaModel.fromMap(Map<String, dynamic> map, String id) {
@@ -29,6 +33,8 @@ class MediaModel {
       couverture: map['couverture'] ?? '',
       disponible: map['disponible'] ?? true,
       note: (map['note'] ?? 0).toDouble(),
+        quantite: map['quantite'] ?? 1,
+      quantiteDisponible: map['quantiteDisponible'] ?? 1,
     );
   }
 
@@ -41,6 +47,9 @@ class MediaModel {
       'couverture': couverture,
       'disponible': disponible,
       'note': note,
+       'quantite': quantite,
+      'quantiteDisponible': quantiteDisponible,
     };
   }
+  
 }

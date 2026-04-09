@@ -7,7 +7,7 @@ import '../communication/communication_view.dart';
 import '../catalogue/catalogue_view.dart';
 import '../events/events_view.dart';
 import '../profile/profile_view.dart';
-import '../../utils/seed_data.dart';
+
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
 
@@ -126,46 +126,7 @@ class _AccueilPageState extends State<_AccueilPage> {
               ],
             ),
             const SizedBox(height: 20),
-// ← Ajoute après le header Row et avant les stats
-const SizedBox(height: 12),
-SizedBox(
-  width: double.infinity,
-  child: ElevatedButton.icon(
-    onPressed: () async {
-      try {
-        await SeedData.initialiserDonnees();
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('✅ Données ajoutées !'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('❌ Erreur: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    },
-    icon: const Icon(Icons.upload, color: Colors.white),
-    label: const Text(
-      'Initialiser les données',
-      style: TextStyle(color: Colors.white),
-    ),
-    style: ElevatedButton.styleFrom(
-      backgroundColor: Colors.teal,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-    ),
-  ),
-),
+
 const SizedBox(height: 16),
             // Statistiques rapides
             Row(

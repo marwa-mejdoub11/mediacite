@@ -41,7 +41,6 @@ class _MediaDetailViewState extends State<MediaDetailView> {
 
   Future<void> _toggleFavori() async {
     final auth = context.read<AuthController>();
-
     if (auth.user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -51,9 +50,7 @@ class _MediaDetailViewState extends State<MediaDetailView> {
       );
       return;
     }
-
     final service = FirestoreService();
-
     if (_estFavori) {
       await service.supprimerFavori(auth.user!.uid, widget.media.id);
       setState(() => _estFavori = false);
@@ -95,7 +92,7 @@ class _MediaDetailViewState extends State<MediaDetailView> {
 
     setState(() => _isLoading = true);
 
-    final success = await empruntCtrl.emprunterMedia(
+    final result = await empruntCtrl.emprunterMedia(
       userId: auth.user!.uid,
       media: widget.media,
     );
@@ -103,17 +100,36 @@ class _MediaDetailViewState extends State<MediaDetailView> {
     setState(() => _isLoading = false);
 
     if (mounted) {
+      String message;
+      Color couleur;
+
+      switch (result) {
+        case 'success':
+          message = '✅ "${widget.media.titre}" emprunté avec succès !';
+          couleur = Colors.green;
+          break;
+        case 'limite':
+          message = '❌ Limite de 3 emprunts atteinte !';
+          couleur = Colors.red;
+          break;
+        case 'indisponible':
+          message = '❌ Plus d\'exemplaire disponible !';
+          couleur = Colors.orange;
+          break;
+        default:
+          message = '❌ Erreur lors de l\'emprunt';
+          couleur = Colors.red;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            success
-                ? '✅ "${widget.media.titre}" emprunté avec succès !'
-                : '❌ Erreur lors de l\'emprunt',
-          ),
-          backgroundColor: success ? Colors.green : Colors.red,
+          content: Text(message),
+          backgroundColor: couleur,
+          duration: const Duration(seconds: 4),
         ),
       );
-      if (success) Navigator.pop(context);
+
+      if (result == 'success') Navigator.pop(context);
     }
   }
 
@@ -145,19 +161,40 @@ class _MediaDetailViewState extends State<MediaDetailView> {
         SnackBar(
           content: Text(
             success
-                ? '✅ Réservation confirmée ! Vous serez notifié.'
-                : '❌ Erreur lors de la réservation',
+                ? '✅ Réservation confirmée ! Vous serez notifié quand disponible.'
+                : '⚠️ Vous êtes déjà en file d\'attente pour ce média.',
           ),
-          backgroundColor: success ? Colors.green : Colors.red,
+          backgroundColor: success ? Colors.green : Colors.orange,
+          duration: const Duration(seconds: 4),
         ),
       );
+
       if (success) Navigator.pop(context);
+    }
+  }
+
+  Future<void> _prolonger(String empruntId) async {
+    final empruntCtrl = context.read<EmpruntController>();
+    final success = await empruntCtrl.prolongerEmprunt(empruntId);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            success
+                ? '✅ Emprunt prolongé de 7 jours !'
+                : '❌ Déjà prolongé — impossible de prolonger à nouveau.',
+          ),
+          backgroundColor: success ? Colors.green : Colors.orange,
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final media = widget.media;
+    final disponible = media.quantiteDisponible > 0;
 
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
@@ -169,7 +206,6 @@ class _MediaDetailViewState extends State<MediaDetailView> {
           style: const TextStyle(color: Colors.white),
         ),
         actions: [
-          // Bouton favori dans AppBar
           _loadingFavori
               ? const Padding(
                   padding: EdgeInsets.all(12),
@@ -195,40 +231,63 @@ class _MediaDetailViewState extends State<MediaDetailView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
+            // ── Header image ──────────────────
             Container(
               width: double.infinity,
-              height: 200,
+              height: 250,
               color: const Color(0xFF16213E),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: Stack(
                 children: [
-                  Icon(
-                    media.categorie == 'film'
-                        ? Icons.movie
-                        : media.categorie == 'magazine'
-                            ? Icons.newspaper
-                            : Icons.book,
-                    size: 80,
-                    color: const Color(0xFFD4AF37),
+                  // Image
+                  Center(
+                    child: media.couverture.isNotEmpty
+                        ? Image.network(
+                            media.couverture,
+                            height: 220,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => Icon(
+                              media.categorie == 'film'
+                                  ? Icons.movie
+                                  : media.categorie == 'magazine'
+                                      ? Icons.newspaper
+                                      : Icons.book,
+                              size: 80,
+                              color: const Color(0xFFD4AF37),
+                            ),
+                          )
+                        : Icon(
+                            media.categorie == 'film'
+                                ? Icons.movie
+                                : media.categorie == 'magazine'
+                                    ? Icons.newspaper
+                                    : Icons.book,
+                            size: 80,
+                            color: const Color(0xFFD4AF37),
+                          ),
                   ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: media.disponible
-                          ? Colors.green.withOpacity(0.2)
-                          : Colors.red.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      media.disponible
-                          ? '✅ Disponible'
-                          : '🔒 Non disponible',
-                      style: TextStyle(
-                        color: media.disponible ? Colors.green : Colors.red,
-                        fontWeight: FontWeight.bold,
+
+                  // Badge disponibilité
+                  Positioned(
+                    top: 12,
+                    right: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: disponible
+                            ? Colors.green.withOpacity(0.9)
+                            : Colors.orange.withOpacity(0.9),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        disponible
+                            ? '${media.quantiteDisponible}/${media.quantite} dispo'
+                            : '🔒 File d\'attente',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                   ),
@@ -241,7 +300,7 @@ class _MediaDetailViewState extends State<MediaDetailView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Titre
+                  // ── Titre + auteur ────────────
                   Text(
                     media.titre,
                     style: const TextStyle(
@@ -258,9 +317,9 @@ class _MediaDetailViewState extends State<MediaDetailView> {
                       fontSize: 16,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
-                  // Infos chips
+                  // ── Chips infos ───────────────
                   Row(
                     children: [
                       _InfoChip(
@@ -273,11 +332,16 @@ class _MediaDetailViewState extends State<MediaDetailView> {
                         icon: Icons.star,
                         label: '${media.note}/5',
                       ),
+                      const SizedBox(width: 8),
+                      _InfoChip(
+                        icon: Icons.copy,
+                        label: '${media.quantite} ex.',
+                      ),
                     ],
                   ),
                   const SizedBox(height: 20),
 
-                  // Description
+                  // ── Description ───────────────
                   const Text(
                     'Description',
                     style: TextStyle(
@@ -297,9 +361,9 @@ class _MediaDetailViewState extends State<MediaDetailView> {
                       height: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
 
-                  // Infos emprunt
+                  // ── Infos emprunt ─────────────
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -318,30 +382,42 @@ class _MediaDetailViewState extends State<MediaDetailView> {
                         _InfoEmprunt(
                           icon: Icons.refresh,
                           label: 'Prolongation',
-                          valeur: '7 jours supplémentaires',
+                          valeur: '+7 jours (1 fois)',
                         ),
                         const Divider(color: Colors.white10),
                         _InfoEmprunt(
                           icon: Icons.library_books,
                           label: 'Limite emprunts',
-                          valeur: '3 médias simultanés',
+                          valeur: '3 médias max',
+                        ),
+                        const Divider(color: Colors.white10),
+                        _InfoEmprunt(
+                          icon: Icons.inventory,
+                          label: 'Exemplaires',
+                          valeur: '${media.quantiteDisponible}/${media.quantite} disponible(s)',
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
 
-                  // Bouton Emprunter ou Réserver
-                  if (media.disponible) ...[
+                  // ── Bouton Emprunter ou Réserver ──
+                  if (disponible) ...[
                     SizedBox(
                       width: double.infinity,
-                      height: 50,
+                      height: 52,
                       child: ElevatedButton.icon(
                         onPressed: _isLoading ? null : _emprunter,
                         icon: const Icon(Icons.book, color: Colors.white),
                         label: _isLoading
-                            ? const CircularProgressIndicator(
-                                color: Colors.white)
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
                             : const Text(
                                 'Emprunter maintenant',
                                 style: TextStyle(
@@ -359,9 +435,36 @@ class _MediaDetailViewState extends State<MediaDetailView> {
                       ),
                     ),
                   ] else ...[
+                    // File d'attente
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.orange.withOpacity(0.3),
+                        ),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.info, color: Colors.orange, size: 18),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Tous les exemplaires sont empruntés. Réservez pour être notifié !',
+                              style: TextStyle(
+                                color: Colors.orange,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     SizedBox(
                       width: double.infinity,
-                      height: 50,
+                      height: 52,
                       child: ElevatedButton.icon(
                         onPressed: _isLoading ? null : _reserver,
                         icon: const Icon(
@@ -369,10 +472,16 @@ class _MediaDetailViewState extends State<MediaDetailView> {
                           color: Colors.white,
                         ),
                         label: _isLoading
-                            ? const CircularProgressIndicator(
-                                color: Colors.white)
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
                             : const Text(
-                                'Réserver (file d\'attente)',
+                                'Rejoindre la file d\'attente',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,
@@ -390,7 +499,7 @@ class _MediaDetailViewState extends State<MediaDetailView> {
                   ],
                   const SizedBox(height: 12),
 
-                  // Bouton Favoris
+                  // ── Bouton Favoris ────────────
                   SizedBox(
                     width: double.infinity,
                     height: 50,

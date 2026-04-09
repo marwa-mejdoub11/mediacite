@@ -5,64 +5,76 @@ import '../models/event_model.dart';
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // ── MEDIAS ──────────────────────────────
+  // ── MEDIAS ──────────────────────────────────
 
   // Récupérer tous les médias
   Stream<List<MediaModel>> getMedias() {
     return _db.collection('medias').snapshots().map((snap) =>
-        snap.docs.map((doc) =>
-            MediaModel.fromMap(doc.data(), doc.id)).toList());
+        snap.docs
+            .map((doc) => MediaModel.fromMap(doc.data(), doc.id))
+            .toList());
   }
 
-  // Ajouter un média (admin)
+  // ✅ Ajouter un média — vérifie les doublons
   Future<void> ajouterMedia(MediaModel media) async {
-    await _db.collection('medias').add(media.toMap());
+    try {
+      // Cherche si titre + auteur existent déjà
+      final existing = await _db
+          .collection('medias')
+          .where('titre', isEqualTo: media.titre)
+          .where('auteur', isEqualTo: media.auteur)
+          .get();
+
+      if (existing.docs.isNotEmpty) {
+        // Média existe → incrémenter quantité
+        final doc = existing.docs.first;
+        final data = doc.data();
+        final ancienneQte = data['quantite'] ?? 1;
+        final ancienneDispo = data['quantiteDisponible'] ?? 1;
+
+        await _db.collection('medias').doc(doc.id).update({
+          'quantite': ancienneQte + 1,
+          'quantiteDisponible': ancienneDispo + 1,
+          'disponible': true,
+        });
+
+        print('✅ "${media.titre}" — quantité: ${ancienneQte + 1}');
+      } else {
+        // Nouveau média → créer
+        await _db.collection('medias').add(media.toMap());
+        print('✅ Nouveau média: ${media.titre}');
+      }
+    } catch (e) {
+      print('❌ Erreur ajouterMedia: $e');
+      rethrow;
+    }
   }
 
-  // Modifier un média (admin)
+  // Modifier un média
   Future<void> modifierMedia(String id, MediaModel media) async {
     await _db.collection('medias').doc(id).update(media.toMap());
   }
 
-  // Supprimer un média (admin)
+  // Supprimer un média
   Future<void> supprimerMedia(String id) async {
     await _db.collection('medias').doc(id).delete();
   }
 
-  // ── EVENEMENTS ──────────────────────────
+  // ── EVENEMENTS ──────────────────────────────
 
-  // Récupérer tous les événements
   Stream<List<EventModel>> getEvenements() {
     return _db.collection('evenements').snapshots().map((snap) =>
-        snap.docs.map((doc) =>
-            EventModel.fromMap(doc.data(), doc.id)).toList());
+        snap.docs
+            .map((doc) => EventModel.fromMap(doc.data(), doc.id))
+            .toList());
   }
 
-  // Ajouter un événement (admin)
   Future<void> ajouterEvenement(EventModel event) async {
     await _db.collection('evenements').add(event.toMap());
   }
 
-  // ── EMPRUNTS ────────────────────────────
+  // ── EMPRUNTS ────────────────────────────────
 
-  // Emprunter un média
-  Future<void> emprunterMedia(String userId, String mediaId) async {
-    await _db.collection('emprunts').add({
-      'userId': userId,
-      'mediaId': mediaId,
-      'dateEmprunt': DateTime.now().toIso8601String(),
-      'dateRetour': DateTime.now().add(
-        const Duration(days: 14)).toIso8601String(),
-      'statut': 'en_cours',
-    });
-
-    // Marquer le média comme non disponible
-    await _db.collection('medias').doc(mediaId).update({
-      'disponible': false,
-    });
-  }
-
-  // Historique emprunts d'un utilisateur
   Stream<List<Map<String, dynamic>>> getEmpruntsUser(String userId) {
     return _db
         .collection('emprunts')
@@ -73,50 +85,46 @@ class FirestoreService {
 
   // ── FAVORIS ─────────────────────────────────
 
-// Ajouter aux favoris
-Future<void> ajouterFavori(String userId, MediaModel media) async {
-  await _db
-      .collection('users')
-      .doc(userId)
-      .collection('favoris')
-      .doc(media.id)
-      .set({
-    'mediaId': media.id,
-    'titre': media.titre,
-    'auteur': media.auteur,
-    'categorie': media.categorie,
-    'dateAjout': DateTime.now().toIso8601String(),
-  });
-}
+  Future<void> ajouterFavori(String userId, MediaModel media) async {
+    await _db
+        .collection('users')
+        .doc(userId)
+        .collection('favoris')
+        .doc(media.id)
+        .set({
+      'mediaId': media.id,
+      'titre': media.titre,
+      'auteur': media.auteur,
+      'categorie': media.categorie,
+      'dateAjout': DateTime.now().toIso8601String(),
+    });
+  }
 
-// Supprimer des favoris
-Future<void> supprimerFavori(String userId, String mediaId) async {
-  await _db
-      .collection('users')
-      .doc(userId)
-      .collection('favoris')
-      .doc(mediaId)
-      .delete();
-}
+  Future<void> supprimerFavori(String userId, String mediaId) async {
+    await _db
+        .collection('users')
+        .doc(userId)
+        .collection('favoris')
+        .doc(mediaId)
+        .delete();
+  }
 
-// Récupérer les favoris
-Stream<List<Map<String, dynamic>>> getFavoris(String userId) {
-  return _db
-      .collection('users')
-      .doc(userId)
-      .collection('favoris')
-      .snapshots()
-      .map((snap) => snap.docs.map((doc) => doc.data()).toList());
-}
+  Stream<List<Map<String, dynamic>>> getFavoris(String userId) {
+    return _db
+        .collection('users')
+        .doc(userId)
+        .collection('favoris')
+        .snapshots()
+        .map((snap) => snap.docs.map((doc) => doc.data()).toList());
+  }
 
-// Vérifier si un média est en favori
-Future<bool> estFavori(String userId, String mediaId) async {
-  final doc = await _db
-      .collection('users')
-      .doc(userId)
-      .collection('favoris')
-      .doc(mediaId)
-      .get();
-  return doc.exists;
-}
+  Future<bool> estFavori(String userId, String mediaId) async {
+    final doc = await _db
+        .collection('users')
+        .doc(userId)
+        .collection('favoris')
+        .doc(mediaId)
+        .get();
+    return doc.exists;
+  }
 }

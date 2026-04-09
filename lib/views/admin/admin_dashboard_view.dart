@@ -5,6 +5,8 @@ import '../../controllers/auth_controller.dart';
 import '../../controllers/media_controller.dart';
 import '../../models/media_model.dart';
 import '../auth/login_view.dart';
+import '../../utils/seed_data.dart';
+
 class AdminDashboardView extends StatefulWidget {
   const AdminDashboardView({super.key});
 
@@ -25,34 +27,31 @@ class _AdminDashboardViewState extends State<AdminDashboardView> {
           children: [
             Icon(Icons.admin_panel_settings, color: Color(0xFFD4AF37)),
             SizedBox(width: 8),
-            Text(
-              'Administration',
-              style: TextStyle(color: Colors.white),
-            ),
+            Text('Administration', style: TextStyle(color: Colors.white)),
           ],
         ),
-     actions: [
-  IconButton(
-    icon: const Icon(Icons.logout, color: Colors.white),
-    onPressed: () async {
-      await context.read<AuthController>().deconnexion();
-      if (mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const LoginView()),
-          (route) => false, // Supprime tout l'historique
-        );
-      }
-    },
-  ),
-],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.white),
+            onPressed: () async {
+              await context.read<AuthController>().deconnexion();
+              if (mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginView()),
+                  (route) => false,
+                );
+              }
+            },
+          ),
+        ],
       ),
       body: IndexedStack(
         index: _currentIndex,
         children: const [
           _AdminAccueil(),
           _GestionMedias(),
-          _AdminMessages(), // ← Nouveau
+          _AdminMessages(),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -71,7 +70,7 @@ class _AdminDashboardViewState extends State<AdminDashboardView> {
             label: 'Médias',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.message), // ← Nouveau
+            icon: Icon(Icons.message),
             label: 'Messages',
           ),
         ],
@@ -102,8 +101,81 @@ class _AdminAccueil extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
 
+            // ✅ Bouton nettoyer doublons uniquement
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  // Confirmation avant nettoyage
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      backgroundColor: const Color(0xFF16213E),
+                      title: const Text(
+                        '🧹 Nettoyer les doublons',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      content: const Text(
+                        'Cette action va fusionner les médias en double en augmentant leur quantité. Continuer ?',
+                        style: TextStyle(color: Colors.white60),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('Annuler'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text(
+                            'Nettoyer',
+                            style: TextStyle(color: Colors.orange),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (confirm == true && context.mounted) {
+                    try {
+                      await SeedData.nettoyerDoublons();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('✅ Doublons supprimés !'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('❌ Erreur: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
+                  }
+                },
+                icon: const Icon(Icons.cleaning_services, color: Colors.white),
+                label: const Text(
+                  'Nettoyer les doublons',
+                  style: TextStyle(color: Colors.white),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Stats
             GridView.count(
               crossAxisCount: 2,
               shrinkWrap: true,
@@ -120,22 +192,19 @@ class _AdminAccueil extends StatelessWidget {
                 _StatCard(
                   icon: Icons.check_circle,
                   label: 'Disponibles',
-                  valeur:
-                      '${mediaCtrl.medias.where((m) => m.disponible).length}',
+                  valeur: '${mediaCtrl.medias.where((m) => m.disponible).length}',
                   couleur: Colors.green,
                 ),
                 _StatCard(
                   icon: Icons.lock,
                   label: 'Empruntés',
-                  valeur:
-                      '${mediaCtrl.medias.where((m) => !m.disponible).length}',
+                  valeur: '${mediaCtrl.medias.where((m) => !m.disponible).length}',
                   couleur: Colors.orange,
                 ),
                 _StatCard(
                   icon: Icons.menu_book,
                   label: 'Livres',
-                  valeur:
-                      '${mediaCtrl.medias.where((m) => m.categorie == 'livre').length}',
+                  valeur: '${mediaCtrl.medias.where((m) => m.categorie == 'livre').length}',
                   couleur: const Color(0xFFD4AF37),
                 ),
               ],
@@ -154,27 +223,114 @@ class _AdminAccueil extends StatelessWidget {
 
             _CategorieBar(
               label: 'Livres',
-              count: mediaCtrl.medias
-                  .where((m) => m.categorie == 'livre')
-                  .length,
+              count: mediaCtrl.medias.where((m) => m.categorie == 'livre').length,
               total: mediaCtrl.medias.length,
               couleur: const Color(0xFFD4AF37),
             ),
             _CategorieBar(
               label: 'Films',
-              count: mediaCtrl.medias
-                  .where((m) => m.categorie == 'film')
-                  .length,
+              count: mediaCtrl.medias.where((m) => m.categorie == 'film').length,
               total: mediaCtrl.medias.length,
               couleur: const Color(0xFF800020),
             ),
             _CategorieBar(
               label: 'Magazines',
-              count: mediaCtrl.medias
-                  .where((m) => m.categorie == 'magazine')
-                  .length,
+              count: mediaCtrl.medias.where((m) => m.categorie == 'magazine').length,
               total: mediaCtrl.medias.length,
               couleur: Colors.teal,
+            ),
+
+            const SizedBox(height: 24),
+            const Text(
+              '📋 Emprunts en cours',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('emprunts')
+                  .where('statut', isEqualTo: 'en_cours')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      'Aucun emprunt en cours',
+                      style: TextStyle(color: Colors.white60),
+                    ),
+                  );
+                }
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: snapshot.data!.docs.length,
+                  itemBuilder: (context, index) {
+                    final data = snapshot.data!.docs[index].data()
+                        as Map<String, dynamic>;
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF16213E),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white10),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.book,
+                            color: Color(0xFFD4AF37),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  data['titreMedia'] ?? '',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                Text(
+                                  'Retour: ${data['dateRetour'] ?? ''}',
+                                  style: const TextStyle(
+                                    color: Colors.white60,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              'En cours',
+                              style: TextStyle(
+                                color: Colors.orange,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
             ),
           ],
         ),
@@ -253,14 +409,10 @@ class _CategorieBar extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(label,
-                  style: const TextStyle(color: Colors.white70)),
+              Text(label, style: const TextStyle(color: Colors.white70)),
               Text(
                 '$count',
-                style: TextStyle(
-                  color: couleur,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(color: couleur, fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -297,6 +449,10 @@ class _GestionMediasState extends State<_GestionMedias> {
     final titreCtrl = TextEditingController(text: media?.titre ?? '');
     final auteurCtrl = TextEditingController(text: media?.auteur ?? '');
     final descCtrl = TextEditingController(text: media?.description ?? '');
+    final couvertureCtrl = TextEditingController(text: media?.couverture ?? '');
+    final quantiteCtrl = TextEditingController(
+      text: media?.quantite.toString() ?? '1',
+    );
     String categorie = media?.categorie ?? 'livre';
     bool disponible = media?.disponible ?? true;
 
@@ -320,9 +476,7 @@ class _GestionMediasState extends State<_GestionMedias> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  media == null
-                      ? '➕ Ajouter un média'
-                      : '✏️ Modifier le média',
+                  media == null ? '➕ Ajouter un média' : '✏️ Modifier le média',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -336,22 +490,24 @@ class _GestionMediasState extends State<_GestionMedias> {
                 const SizedBox(height: 12),
                 _ChampTexte(controller: descCtrl, label: 'Description'),
                 const SizedBox(height: 12),
-                const Text(
-                  'Catégorie',
-                  style: TextStyle(color: Colors.white60),
+                _ChampTexte(controller: couvertureCtrl, label: 'URL Couverture'),
+                const SizedBox(height: 12),
+                _ChampTexte(
+                  controller: quantiteCtrl,
+                  label: 'Nombre d\'exemplaires',
+                  keyboardType: TextInputType.number,
                 ),
+                const SizedBox(height: 12),
+                const Text('Catégorie', style: TextStyle(color: Colors.white60)),
                 const SizedBox(height: 8),
                 Row(
                   children: ['livre', 'film', 'magazine'].map((cat) {
                     return GestureDetector(
-                      onTap: () =>
-                          setModalState(() => categorie = cat),
+                      onTap: () => setModalState(() => categorie = cat),
                       child: Container(
                         margin: const EdgeInsets.only(right: 8),
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
+                            horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
                           color: categorie == cat
                               ? const Color(0xFF800020)
@@ -370,14 +526,11 @@ class _GestionMediasState extends State<_GestionMedias> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Disponible',
-                      style: TextStyle(color: Colors.white60),
-                    ),
+                    const Text('Disponible',
+                        style: TextStyle(color: Colors.white60)),
                     Switch(
                       value: disponible,
-                      onChanged: (v) =>
-                          setModalState(() => disponible = v),
+                      onChanged: (v) => setModalState(() => disponible = v),
                       activeColor: const Color(0xFFD4AF37),
                     ),
                   ],
@@ -389,22 +542,39 @@ class _GestionMediasState extends State<_GestionMedias> {
                   child: ElevatedButton(
                     onPressed: () async {
                       final ctrl = context.read<MediaController>();
+                      final qte = int.tryParse(quantiteCtrl.text) ?? 1;
                       final nouveauMedia = MediaModel(
                         id: media?.id ?? '',
                         titre: titreCtrl.text.trim(),
                         auteur: auteurCtrl.text.trim(),
                         categorie: categorie,
                         description: descCtrl.text.trim(),
-                        couverture: '',
+                        couverture: couvertureCtrl.text.trim(),
                         disponible: disponible,
                         note: media?.note ?? 0,
+                        quantite: qte,
+                        quantiteDisponible: media == null
+                            ? qte
+                            : media.quantiteDisponible,
                       );
                       if (media == null) {
                         await ctrl.ajouterMedia(nouveauMedia);
                       } else {
                         await ctrl.modifierMedia(media.id, nouveauMedia);
                       }
-                      if (context.mounted) Navigator.pop(context);
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              media == null
+                                  ? '✅ Média ajouté !'
+                                  : '✅ Média modifié !',
+                            ),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF800020),
@@ -443,17 +613,11 @@ class _GestionMediasState extends State<_GestionMedias> {
       ),
       body: ctrl.isLoading
           ? const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFFD4AF37),
-              ),
-            )
+              child: CircularProgressIndicator(color: Color(0xFFD4AF37)))
           : ctrl.medias.isEmpty
               ? const Center(
-                  child: Text(
-                    'Aucun média',
-                    style: TextStyle(color: Colors.white60),
-                  ),
-                )
+                  child: Text('Aucun média',
+                      style: TextStyle(color: Colors.white60)))
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: ctrl.medias.length,
@@ -467,14 +631,33 @@ class _GestionMediasState extends State<_GestionMedias> {
                         border: Border.all(color: Colors.white10),
                       ),
                       child: ListTile(
-                        leading: Icon(
-                          media.categorie == 'film'
-                              ? Icons.movie
-                              : media.categorie == 'magazine'
-                                  ? Icons.newspaper
-                                  : Icons.book,
-                          color: const Color(0xFFD4AF37),
-                          size: 32,
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: media.couverture.isNotEmpty
+                              ? Image.network(
+                                  media.couverture,
+                                  width: 40,
+                                  height: 55,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Icon(
+                                    media.categorie == 'film'
+                                        ? Icons.movie
+                                        : media.categorie == 'magazine'
+                                            ? Icons.newspaper
+                                            : Icons.book,
+                                    color: const Color(0xFFD4AF37),
+                                    size: 32,
+                                  ),
+                                )
+                              : Icon(
+                                  media.categorie == 'film'
+                                      ? Icons.movie
+                                      : media.categorie == 'magazine'
+                                          ? Icons.newspaper
+                                          : Icons.book,
+                                  color: const Color(0xFFD4AF37),
+                                  size: 32,
+                                ),
                         ),
                         title: Text(
                           media.titre,
@@ -483,79 +666,61 @@ class _GestionMediasState extends State<_GestionMedias> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        subtitle: Text(
-                          media.auteur,
-                          style:
-                              const TextStyle(color: Colors.white60),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              media.auteur,
+                              style: const TextStyle(color: Colors.white60),
+                            ),
+                            Text(
+                              '${media.quantiteDisponible}/${media.quantite} exemplaire(s)',
+                              style: TextStyle(
+                                color: media.quantiteDisponible > 0
+                                    ? Colors.green
+                                    : Colors.orange,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: media.disponible
-                                    ? Colors.green.withOpacity(0.2)
-                                    : Colors.red.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                media.disponible ? '✅' : '🔒',
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
                             IconButton(
-                              icon: const Icon(
-                                Icons.edit,
-                                color: Color(0xFFD4AF37),
-                                size: 20,
-                              ),
+                              icon: const Icon(Icons.edit,
+                                  color: Color(0xFFD4AF37), size: 20),
                               onPressed: () =>
                                   _afficherFormulaireAjout(media: media),
                             ),
                             IconButton(
-                              icon: const Icon(
-                                Icons.delete,
-                                color: Colors.redAccent,
-                                size: 20,
-                              ),
+                              icon: const Icon(Icons.delete,
+                                  color: Colors.redAccent, size: 20),
                               onPressed: () async {
                                 final confirm = await showDialog<bool>(
                                   context: context,
                                   builder: (ctx) => AlertDialog(
-                                    backgroundColor:
-                                        const Color(0xFF16213E),
-                                    title: const Text(
-                                      'Confirmer',
-                                      style:
-                                          TextStyle(color: Colors.white),
-                                    ),
+                                    backgroundColor: const Color(0xFF16213E),
+                                    title: const Text('Confirmer',
+                                        style: TextStyle(color: Colors.white)),
                                     content: Text(
                                       'Supprimer "${media.titre}" ?',
                                       style: const TextStyle(
-                                        color: Colors.white60,
-                                      ),
+                                          color: Colors.white60),
                                     ),
                                     actions: [
                                       TextButton(
                                         onPressed: () =>
                                             Navigator.pop(ctx, false),
-                                        child:
-                                            const Text('Annuler'),
+                                        child: const Text('Annuler'),
                                       ),
                                       TextButton(
                                         onPressed: () =>
                                             Navigator.pop(ctx, true),
-                                        child: const Text(
-                                          'Supprimer',
-                                          style: TextStyle(
-                                            color: Colors.redAccent,
-                                          ),
-                                        ),
+                                        child: const Text('Supprimer',
+                                            style: TextStyle(
+                                                color: Colors.redAccent)),
                                       ),
                                     ],
                                   ),
@@ -580,14 +745,20 @@ class _GestionMediasState extends State<_GestionMedias> {
 class _ChampTexte extends StatelessWidget {
   final TextEditingController controller;
   final String label;
+  final TextInputType? keyboardType;
 
-  const _ChampTexte({required this.controller, required this.label});
+  const _ChampTexte({
+    required this.controller,
+    required this.label,
+    this.keyboardType,
+  });
 
   @override
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
       style: const TextStyle(color: Colors.white),
+      keyboardType: keyboardType,
       decoration: InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(color: Colors.white60),
@@ -658,8 +829,7 @@ class _AdminMessagesState extends State<_AdminMessages>
 class _AdminAnnonces extends StatelessWidget {
   const _AdminAnnonces();
 
-  void _afficherFormulaireAnnonce(
-      BuildContext context, AuthController auth) {
+  void _afficherFormulaireAnnonce(BuildContext context, AuthController auth) {
     final titreCtrl = TextEditingController();
     final contenuCtrl = TextEditingController();
     String type = 'info';
@@ -723,10 +893,7 @@ class _AdminAnnonces extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
-                  'Type',
-                  style: TextStyle(color: Colors.white60),
-                ),
+                const Text('Type', style: TextStyle(color: Colors.white60)),
                 const SizedBox(height: 8),
                 Row(
                   children: [
@@ -748,8 +915,7 @@ class _AdminAnnonces extends StatelessWidget {
                       label: 'Événement',
                       selected: type == 'evenement',
                       couleur: const Color(0xFFD4AF37),
-                      onTap: () =>
-                          setModalState(() => type = 'evenement'),
+                      onTap: () => setModalState(() => type = 'evenement'),
                     ),
                   ],
                 ),
@@ -779,10 +945,7 @@ class _AdminAnnonces extends StatelessWidget {
                     ),
                     child: const Text(
                       'Publier',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
+                      style: TextStyle(color: Colors.white, fontSize: 16),
                     ),
                   ),
                 ),
@@ -813,21 +976,15 @@ class _AdminAnnonces extends StatelessWidget {
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFFD4AF37),
-              ),
+              child: CircularProgressIndicator(color: Color(0xFFD4AF37)),
             );
           }
-
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return const Center(
-              child: Text(
-                'Aucune annonce',
-                style: TextStyle(color: Colors.white60),
-              ),
+              child: Text('Aucune annonce',
+                  style: TextStyle(color: Colors.white60)),
             );
           }
-
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: snapshot.data!.docs.length,
@@ -835,7 +992,6 @@ class _AdminAnnonces extends StatelessWidget {
               final doc = snapshot.data!.docs[index];
               final data = doc.data() as Map<String, dynamic>;
               final type = data['type'] ?? 'info';
-
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(16),
@@ -873,9 +1029,7 @@ class _AdminAnnonces extends StatelessWidget {
                           Text(
                             data['contenu'] ?? '',
                             style: const TextStyle(
-                              color: Colors.white60,
-                              fontSize: 12,
-                            ),
+                                color: Colors.white60, fontSize: 12),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -883,10 +1037,7 @@ class _AdminAnnonces extends StatelessWidget {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(
-                        Icons.delete,
-                        color: Colors.redAccent,
-                      ),
+                      icon: const Icon(Icons.delete, color: Colors.redAccent),
                       onPressed: () async {
                         await FirebaseFirestore.instance
                             .collection('annonces')
@@ -923,8 +1074,7 @@ class _TypeBtn extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: selected ? couleur : Colors.white10,
           borderRadius: BorderRadius.circular(20),
@@ -933,8 +1083,7 @@ class _TypeBtn extends StatelessWidget {
           label,
           style: TextStyle(
             color: selected ? Colors.white : Colors.white60,
-            fontWeight:
-                selected ? FontWeight.bold : FontWeight.normal,
+            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
           ),
         ),
       ),
@@ -961,8 +1110,6 @@ class _AdminMessagesListState extends State<_AdminMessagesList> {
 
   void _afficherReponse(BuildContext context, String messageId,
       String senderNom, String messageContenu) {
-    final auth = context.read<AuthController>();
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -990,14 +1137,11 @@ class _AdminMessagesListState extends State<_AdminMessagesList> {
               ),
             ),
             const SizedBox(height: 12),
-
-            // Message original
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.white10,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white10),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1014,16 +1158,12 @@ class _AdminMessagesListState extends State<_AdminMessagesList> {
                   Text(
                     messageContenu,
                     style: const TextStyle(
-                      color: Colors.white60,
-                      fontSize: 13,
-                    ),
+                        color: Colors.white60, fontSize: 13),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 12),
-
-            // Champ réponse
             TextField(
               controller: _reponseCtrl,
               style: const TextStyle(color: Colors.white),
@@ -1041,8 +1181,6 @@ class _AdminMessagesListState extends State<_AdminMessagesList> {
               ),
             ),
             const SizedBox(height: 12),
-
-            // Bouton envoyer
             SizedBox(
               width: double.infinity,
               height: 50,
@@ -1098,16 +1236,12 @@ class _AdminMessagesListState extends State<_AdminMessagesList> {
             child: CircularProgressIndicator(color: Color(0xFFD4AF37)),
           );
         }
-
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return const Center(
-            child: Text(
-              'Aucun message',
-              style: TextStyle(color: Colors.white60),
-            ),
+            child: Text('Aucun message',
+                style: TextStyle(color: Colors.white60)),
           );
         }
-
         return ListView.builder(
           padding: const EdgeInsets.all(16),
           itemCount: snapshot.data!.docs.length,
@@ -1149,9 +1283,7 @@ class _AdminMessagesListState extends State<_AdminMessagesList> {
                                   : (data['senderNom'] ?? 'U')[0]
                                       .toUpperCase(),
                               style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                              ),
+                                  color: Colors.white, fontSize: 12),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -1172,9 +1304,7 @@ class _AdminMessagesListState extends State<_AdminMessagesList> {
                                 Text(
                                   '↩️ En réponse à ${data['reponseA']}',
                                   style: const TextStyle(
-                                    color: Colors.white38,
-                                    fontSize: 10,
-                                  ),
+                                      color: Colors.white38, fontSize: 10),
                                 ),
                             ],
                           ),
@@ -1185,9 +1315,7 @@ class _AdminMessagesListState extends State<_AdminMessagesList> {
                             ? (data['date'] as String).substring(11, 16)
                             : '',
                         style: const TextStyle(
-                          color: Colors.white38,
-                          fontSize: 11,
-                        ),
+                            color: Colors.white38, fontSize: 11),
                       ),
                     ],
                   ),
@@ -1195,17 +1323,12 @@ class _AdminMessagesListState extends State<_AdminMessagesList> {
                   Text(
                     data['contenu'] ?? '',
                     style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 13,
-                    ),
+                        color: Colors.white70, fontSize: 13),
                   ),
                   const SizedBox(height: 8),
-
-                  // Actions
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      // Bouton répondre (seulement si pas admin)
                       if (!estAdmin)
                         GestureDetector(
                           onTap: () => _afficherReponse(
@@ -1216,36 +1339,27 @@ class _AdminMessagesListState extends State<_AdminMessagesList> {
                           ),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
+                                horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF800020).withOpacity(0.2),
+                              color:
+                                  const Color(0xFF800020).withOpacity(0.2),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: const Row(
                               children: [
-                                Icon(
-                                  Icons.reply,
-                                  color: Color(0xFF800020),
-                                  size: 14,
-                                ),
+                                Icon(Icons.reply,
+                                    color: Color(0xFF800020), size: 14),
                                 SizedBox(width: 4),
-                                Text(
-                                  'Répondre',
-                                  style: TextStyle(
-                                    color: Color(0xFF800020),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                                Text('Répondre',
+                                    style: TextStyle(
+                                        color: Color(0xFF800020),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold)),
                               ],
                             ),
                           ),
                         ),
                       const SizedBox(width: 8),
-
-                      // Bouton supprimer
                       GestureDetector(
                         onTap: () async {
                           await FirebaseFirestore.instance
@@ -1255,29 +1369,21 @@ class _AdminMessagesListState extends State<_AdminMessagesList> {
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
+                              horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
                             color: Colors.red.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: const Row(
                             children: [
-                              Icon(
-                                Icons.delete,
-                                color: Colors.redAccent,
-                                size: 14,
-                              ),
+                              Icon(Icons.delete,
+                                  color: Colors.redAccent, size: 14),
                               SizedBox(width: 4),
-                              Text(
-                                'Supprimer',
-                                style: TextStyle(
-                                  color: Colors.redAccent,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                              Text('Supprimer',
+                                  style: TextStyle(
+                                      color: Colors.redAccent,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold)),
                             ],
                           ),
                         ),
@@ -1293,4 +1399,3 @@ class _AdminMessagesListState extends State<_AdminMessagesList> {
     );
   }
 }
-  

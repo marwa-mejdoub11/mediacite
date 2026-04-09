@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/media_controller.dart';
@@ -40,7 +41,7 @@ class _CatalogueViewState extends State<CatalogueView> {
       ),
       body: Column(
         children: [
-          // Barre recherche
+          // 🔍 Barre recherche
           Padding(
             padding: const EdgeInsets.all(16),
             child: TextField(
@@ -64,7 +65,7 @@ class _CatalogueViewState extends State<CatalogueView> {
             ),
           ),
 
-          // Filtres catégories
+          // 🎯 Filtres catégories
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -76,9 +77,7 @@ class _CatalogueViewState extends State<CatalogueView> {
                   child: Container(
                     margin: const EdgeInsets.only(right: 8),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
+                        horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
                       color: selected
                           ? const Color(0xFF800020)
@@ -101,7 +100,7 @@ class _CatalogueViewState extends State<CatalogueView> {
           ),
           const SizedBox(height: 16),
 
-          // Liste médias
+          // 📚 Liste médias
           Expanded(
             child: ctrl.isLoading
                 ? const Center(
@@ -117,56 +116,70 @@ class _CatalogueViewState extends State<CatalogueView> {
                         ),
                       )
                     : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 16),
                         itemCount: ctrl.medias.length,
                         itemBuilder: (context, index) {
                           final media = ctrl.medias[index];
+
                           return GestureDetector(
                             onTap: () => Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => MediaDetailView(media: media),
+                                builder: (_) =>
+                                    MediaDetailView(media: media),
                               ),
                             ),
                             child: Container(
-                              margin: const EdgeInsets.only(bottom: 12),
+                              margin:
+                                  const EdgeInsets.only(bottom: 12),
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF16213E),
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius:
+                                    BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: media.disponible
-                                      ? Colors.white10
-                                      : Colors.orange.withOpacity(0.3),
+                                  color:
+                                      media.quantiteDisponible > 0
+                                          ? Colors.white10
+                                          : Colors.orange
+                                              .withOpacity(0.3),
                                 ),
                               ),
                               child: Row(
                                 children: [
-                                  // Image ou icône
+                                  // 📷 Image ou icône
                                   ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius:
+                                        BorderRadius.circular(8),
                                     child: media.couverture.isNotEmpty
                                         ? Image.network(
                                             media.couverture,
                                             width: 55,
                                             height: 75,
                                             fit: BoxFit.cover,
-                                            errorBuilder: (_, __, ___) => _iconeMedia(media.categorie),
+                                            errorBuilder:
+                                                (_, __, ___) =>
+                                                    _iconeMedia(
+                                                        media.categorie),
                                           )
-                                        : _iconeMedia(media.categorie),
+                                        : _iconeMedia(
+                                            media.categorie),
                                   ),
                                   const SizedBox(width: 12),
 
-                                  // Infos
+                                  // 📝 Infos
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           media.titre,
                                           style: const TextStyle(
                                             color: Colors.white,
-                                            fontWeight: FontWeight.bold,
+                                            fontWeight:
+                                                FontWeight.bold,
                                             fontSize: 14,
                                           ),
                                         ),
@@ -179,96 +192,116 @@ class _CatalogueViewState extends State<CatalogueView> {
                                           ),
                                         ),
                                         const SizedBox(height: 6),
+
                                         Row(
                                           children: [
-                                            // Badge catégorie
+                                            // 🏷 Catégorie
                                             Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 8, vertical: 2),
-                                              decoration: BoxDecoration(
-                                                color: Colors.white10,
-                                                borderRadius: BorderRadius.circular(8),
+                                              padding:
+                                                  const EdgeInsets
+                                                      .symmetric(
+                                                          horizontal:
+                                                              8,
+                                                          vertical:
+                                                              2),
+                                              decoration:
+                                                  BoxDecoration(
+                                                color:
+                                                    Colors.white10,
+                                                borderRadius:
+                                                    BorderRadius
+                                                        .circular(
+                                                            8),
                                               ),
                                               child: Text(
-                                                media.categorie[0].toUpperCase() +
-                                                    media.categorie.substring(1),
-                                                style: const TextStyle(
-                                                  color: Colors.white60,
+                                                media.categorie[0]
+                                                        .toUpperCase() +
+                                                    media.categorie
+                                                        .substring(1),
+                                                style:
+                                                    const TextStyle(
+                                                  color:
+                                                      Colors.white60,
                                                   fontSize: 10,
                                                 ),
                                               ),
                                             ),
                                             const SizedBox(width: 6),
-                                            // Note
+
+                                            // ⭐ Note
                                             const Icon(
                                               Icons.star,
-                                              color: Color(0xFFD4AF37),
+                                              color: Color(
+                                                  0xFFD4AF37),
                                               size: 12,
                                             ),
                                             Text(
                                               ' ${media.note}',
-                                              style: const TextStyle(
-                                                color: Color(0xFFD4AF37),
+                                              style:
+                                                  const TextStyle(
+                                                color: Color(
+                                                    0xFFD4AF37),
                                                 fontSize: 11,
                                               ),
                                             ),
                                           ],
                                         ),
+
                                         const SizedBox(height: 6),
 
-                                        // Statut disponibilité
-                                        if (media.disponible)
-                                          Row(
-                                            children: [
-                                              const Icon(
-                                                Icons.check_circle,
-                                                color: Colors.green,
-                                                size: 14,
+                                        // ✅ Statut avec quantité
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              media.quantiteDisponible >
+                                                      0
+                                                  ? Icons
+                                                      .check_circle
+                                                  : Icons.access_time,
+                                              color:
+                                                  media.quantiteDisponible >
+                                                          0
+                                                      ? Colors.green
+                                                      : Colors.orange,
+                                              size: 14,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              media.quantiteDisponible >
+                                                      0
+                                                  ? '${media.quantiteDisponible}/${media.quantite} disponible(s)'
+                                                  : 'Non disponible — Réserver',
+                                              style: TextStyle(
+                                                color: media
+                                                            .quantiteDisponible >
+                                                        0
+                                                    ? Colors.green
+                                                    : Colors.orange,
+                                                fontSize: 11,
+                                                fontWeight:
+                                                    FontWeight.bold,
                                               ),
-                                              const SizedBox(width: 4),
-                                              const Text(
-                                                'Disponible — Emprunter',
-                                                style: TextStyle(
-                                                  color: Colors.green,
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ],
-                                          )
-                                        else
-                                          Row(
-                                            children: [
-                                              const Icon(
-                                                Icons.access_time,
-                                                color: Colors.orange,
-                                                size: 14,
-                                              ),
-                                              const SizedBox(width: 4),
-                                              const Text(
-                                                'Non disponible — Réserver',
-                                                style: TextStyle(
-                                                  color: Colors.orange,
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
+                                            ),
+                                          ],
+                                        ),
                                       ],
                                     ),
                                   ),
 
-                                  // Bouton action rapide
+                                  // ⚡ Action rapide
                                   Column(
                                     children: [
                                       Icon(
-                                        media.disponible
+                                        media.quantiteDisponible > 0
                                             ? Icons.book
                                             : Icons.bookmark_add,
-                                        color: media.disponible
-                                            ? const Color(0xFF800020)
-                                            : const Color(0xFFD4AF37),
+                                        color:
+                                            media.quantiteDisponible >
+                                                    0
+                                                ? const Color(
+                                                    0xFF800020)
+                                                : const Color(
+                                                    0xFFD4AF37),
                                         size: 28,
                                       ),
                                       const SizedBox(height: 4),
@@ -291,6 +324,7 @@ class _CatalogueViewState extends State<CatalogueView> {
     );
   }
 
+  // 🎨 Icône par catégorie
   Widget _iconeMedia(String categorie) {
     return Container(
       width: 55,
