@@ -109,12 +109,12 @@ class _ProfileViewState extends State<ProfileView>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       _Badge(
-                        label: user?.role.toUpperCase() ?? 'USAGER',
+                        label: (user?.role ?? 'USAGER').toString().toUpperCase(),
                         couleur: const Color(0xFFD4AF37),
                       ),
                       const SizedBox(width: 8),
                       _Badge(
-                        label: user?.statut.toUpperCase() ?? 'ACTIF',
+                        label: (user?.statut ?? 'ACTIF').toString().toUpperCase(),
                         couleur: Colors.green,
                       ),
                     ],
@@ -122,14 +122,16 @@ class _ProfileViewState extends State<ProfileView>
                   const SizedBox(height: 16),
 
                   // Stats rapides
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _StatProfil(label: 'Emprunts', valeur: '0'),
-                      _StatProfil(label: 'Favoris', valeur: '0'),
-                      _StatProfil(label: 'Événements', valeur: '0'),
-                    ],
-                  ),
+                  user?.uid != null
+                      ? _StatsSection(userId: user!.uid)
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: const [
+                            _StatProfil(label: 'Emprunts', valeur: '0'),
+                            _StatProfil(label: 'Favoris', valeur: '0'),
+                            _StatProfil(label: 'Événements', valeur: '0'),
+                          ],
+                        ),
                 ],
               ),
             ),
@@ -161,6 +163,52 @@ class _ProfileViewState extends State<ProfileView>
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Stats Section ─────────────────────────────
+class _StatsSection extends StatelessWidget {
+  final String userId;
+
+  const _StatsSection({required this.userId});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<Map<String, int>>(
+      stream: FirestoreService().getStatsUtilisateur(userId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _StatProfil(label: 'Emprunts', valeur: '...'),
+              _StatProfil(label: 'Favoris', valeur: '...'),
+              _StatProfil(label: 'Événements', valeur: '...'),
+            ],
+          );
+        }
+
+        final stats = snapshot.data ?? {'emprunts': 0, 'favoris': 0, 'evenements': 0};
+
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _StatProfil(
+              label: 'Emprunts',
+              valeur: stats['emprunts']?.toString() ?? '0',
+            ),
+            _StatProfil(
+              label: 'Favoris',
+              valeur: stats['favoris']?.toString() ?? '0',
+            ),
+            _StatProfil(
+              label: 'Événements',
+              valeur: stats['evenements']?.toString() ?? '0',
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -267,11 +315,6 @@ class _HistoriqueTab extends StatelessWidget {
                   'Aucun emprunt pour le moment',
                   style: TextStyle(color: Colors.white60),
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Empruntez des médias pour les voir ici',
-                  style: TextStyle(color: Colors.white38, fontSize: 12),
-                ),
               ],
             ),
           );
@@ -315,7 +358,7 @@ class _HistoriqueTab extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          emprunt['mediaId'] ?? 'Média',
+                          emprunt['titre'] ?? emprunt['mediaId'] ?? 'Média',
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -339,8 +382,7 @@ class _HistoriqueTab extends StatelessWidget {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: statut == 'en_cours'
                           ? Colors.orange.withOpacity(0.2)
@@ -350,9 +392,7 @@ class _HistoriqueTab extends StatelessWidget {
                     child: Text(
                       statut == 'en_cours' ? 'En cours' : 'Rendu',
                       style: TextStyle(
-                        color: statut == 'en_cours'
-                            ? Colors.orange
-                            : Colors.green,
+                        color: statut == 'en_cours' ? Colors.orange : Colors.green,
                         fontSize: 11,
                       ),
                     ),
@@ -368,7 +408,6 @@ class _HistoriqueTab extends StatelessWidget {
 }
 
 // ── Tab Favoris ───────────────────────────────
-
 class _FavorisTab extends StatelessWidget {
   final String userId;
 
@@ -406,11 +445,6 @@ class _FavorisTab extends StatelessWidget {
                 Text(
                   'Aucun favori pour le moment',
                   style: TextStyle(color: Colors.white60),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Ajoutez des médias depuis le catalogue',
-                  style: TextStyle(color: Colors.white38, fontSize: 12),
                 ),
               ],
             ),
@@ -468,7 +502,7 @@ class _FavorisTab extends StatelessWidget {
                     onPressed: () async {
                       await FirestoreService().supprimerFavori(
                         userId,
-                        favori['mediaId'],
+                        favori['mediaId'] ?? '',
                       );
                     },
                   ),
@@ -506,7 +540,6 @@ class _ParametresTab extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-
           _OptionTile(
             icon: Icons.person,
             label: 'Modifier mon profil',
@@ -517,18 +550,7 @@ class _ParametresTab extends StatelessWidget {
             label: 'Changer le mot de passe',
             onTap: () {},
           ),
-          _OptionTile(
-            icon: Icons.notifications,
-            label: 'Notifications',
-            trailing: Switch(
-              value: true,
-              onChanged: (v) {},
-              activeColor: const Color(0xFFD4AF37),
-            ),
-            onTap: () {},
-          ),
           const SizedBox(height: 24),
-
           const Text(
             'Préférences',
             style: TextStyle(
@@ -538,50 +560,13 @@ class _ParametresTab extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-
           _OptionTile(
             icon: Icons.dark_mode,
             label: 'Mode sombre',
-            trailing: Switch(
-              value: true,
-              onChanged: (v) {},
-              activeColor: const Color(0xFFD4AF37),
-            ),
             onTap: () {},
-          ),
-          _OptionTile(
-            icon: Icons.language,
-            label: 'Langue',
-            trailing: const Text(
-              'Français',
-              style: TextStyle(color: Colors.white38),
-            ),
-            onTap: () {},
+            trailing: Switch(value: true, onChanged: (_) {}, activeColor: const Color(0xFFD4AF37)),
           ),
           const SizedBox(height: 24),
-
-          const Text(
-            'À propos',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          _OptionTile(
-            icon: Icons.info,
-            label: 'Version de l\'app',
-            trailing: const Text(
-              'v1.0.0',
-              style: TextStyle(color: Colors.white38),
-            ),
-            onTap: () {},
-          ),
-          const SizedBox(height: 32),
-
-          // Bouton déconnexion
           SizedBox(
             width: double.infinity,
             height: 50,
@@ -596,15 +581,10 @@ class _ParametresTab extends StatelessWidget {
                 }
               },
               icon: const Icon(Icons.logout, color: Colors.white),
-              label: const Text(
-                'Se déconnecter',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
+              label: const Text('Se déconnecter', style: TextStyle(color: Colors.white, fontSize: 16)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF800020),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ),
@@ -638,8 +618,7 @@ class _OptionTile extends StatelessWidget {
       child: ListTile(
         leading: Icon(icon, color: const Color(0xFFD4AF37)),
         title: Text(label, style: const TextStyle(color: Colors.white)),
-        trailing: trailing ??
-            const Icon(Icons.chevron_right, color: Colors.white38),
+        trailing: trailing ?? const Icon(Icons.chevron_right, color: Colors.white38),
         onTap: onTap,
       ),
     );
